@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Task Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Simple Task Tracker hosted on S3 with Cognito Hosted UI login" />
+</head>
+<body>
+  <header class="container">
+    <h1>✅ Task Tracker</h1>
+    <div id="auth">
+      <button id="loginBtn" class="btn">Login</button>
+      <button id="logoutBtn" class="btn btn-secondary hidden">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="userInfo" class="card hidden">
+      <h2>Your session</h2>
+      <p><strong>Signed in as:</strong> <span id="userEmail">—</span></p>
+      <p class="muted">Tokens are stored in memory only and cleared on logout.</p>
+    </section>
+
+    <section class="card">
+      <h2>Add a task</h2>
+      <form id="taskForm">
+        <input id="taskInput" type="text" placeholder="e.g., Finish S3 upload" required />
+        <button type="submit" class="btn">Add</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Your tasks</h2>
+      <ul id="taskList"></ul>
+    </section>
+  </main>
+
+  <footer class="container muted">
+    <p>Static site hosted on Amazon S3 • Cognito Hosted UI for auth (redirect-based).</p>
+  </footer>
+
+  <script src="app.js"></script>
+
+    <script>
+    // Injected Cognito Hosted UI integration
+  window.COGNITO_CONFIG = {
+  domain: "us-east-1yecpvf8je.auth.us-east-1.amazoncognito.com", // your Hosted UI domain
+  client_id: "2n009cnokuuhe85m94lh9fm71v",                       // your App client ID
+  redirect_uri: "https://task-tracker-prem.s3.us-east-1.amazonaws.com/index.html", // HTTPS REST endpoint
+  response_type: "token",
+  scope: "openid email profile"
+    };
+    function parseHashParams(hash){
+      const out = {}; (hash || "").replace(/^#/, "").split("&").forEach(p=>{
+        const [k,v] = p.split("="); if(k) out[decodeURIComponent(k)] = decodeURIComponent(v||"");
+      }); return out;
+    }
+    function decodeJwt(t){ try{ const p=t.split(".")[1]; return JSON.parse(atob(p.replace(/-/g,"+").replace(/_/g,"/"))); }catch(e){ return null; } }
+    function authUrl(){
+      const c=window.COGNITO_CONFIG;
+      const u=new URL("https://"+c.domain+"/oauth2/authorize");
+      u.searchParams.set("client_id", c.client_id);
+      u.searchParams.set("response_type", c.response_type);
+      u.searchParams.set("redirect_uri", c.redirect_uri);
+      u.searchParams.set("scope", c.scope);
+      return u.toString();
+    }
+    function logoutUrl(){
+      const c=window.COGNITO_CONFIG;
+      const u=new URL("https://"+c.domain+"/logout");
+      u.searchParams.set("client_id", c.client_id);
+      u.searchParams.set("logout_uri", c.redirect_uri);
+      return u.toString();
+    }
+    (function boot(){
+      const params = parseHashParams(location.hash);
+      if(params.id_token){
+        localStorage.setItem("id_token", params.id_token);
+        history.replaceState({}, document.title, location.pathname);
+      }
+      const token = localStorage.getItem("id_token");
+      if(token){
+        const claims = decodeJwt(token) || {};
+        const badge = document.getElementById("userBadge");
+        if(badge){ badge.textContent = claims.email || claims.name || "Signed In"; }
+        const login = document.getElementById("loginBtn"); if(login) login.style.display="none";
+        const logout = document.getElementById("logoutBtn"); if(logout) logout.style.display="inline-block";
+      }
+      const lb=document.getElementById("loginBtn"); if(lb) lb.onclick=()=>location.href=authUrl();
+      const lo=document.getElementById("logoutBtn"); if(lo) lo.onclick=()=>{ localStorage.removeItem("id_token"); location.href = logoutUrl(); };
+    })();
+    </script>
+    
+</body>
+</html>
