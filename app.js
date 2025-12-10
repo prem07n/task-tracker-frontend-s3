@@ -1,3 +1,4 @@
+//.............Configure.................
 const COGNITO_DOMAIN = "us-east-1m4jv6n3ds.auth.us-east-1.amazoncognito.com";
 const CLIENT_ID = "3grd2pmn0saj0u5mgfp8qj5r";
 const RESPONSE_TYPE = "token";
